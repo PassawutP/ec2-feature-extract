@@ -49,7 +49,8 @@ async def get_status(task_id: str):
 
 @app.get("/download/{filename}")
 async def download_file(filename: str):
-    file_path = os.path.join(DOWNLOAD_DIR, filename)
+    name = f"Features_{filename}.csv"
+    file_path = os.path.join(DOWNLOAD_DIR, "PhishingLink", name)
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="text/csv", filename=filename)
     else:
