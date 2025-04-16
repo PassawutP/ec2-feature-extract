@@ -29,7 +29,7 @@ async def process_files(whitelist: UploadFile = File(...), blacklist: UploadFile
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
-    csv_filename = f"PhishingLink/Features_{task_id}.csv"
+    csv_filename = f"Features_{task_id}.csv"
     
     # Check if the CSV file exists
     if os.path.exists(csv_filename):
