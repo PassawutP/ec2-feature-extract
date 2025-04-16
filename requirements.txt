@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+celery
+redis
+python-dotenv
+tldextract
+requests
+beautifulsoup4
+whois
+pandas
+python-whois
