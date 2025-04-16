@@ -467,7 +467,7 @@ def extract_external_features(url):#, openpagerank_api_key=api_key):
 def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str:
     totalfeat = []
 
-    with open(os.path.join("PhishingLink", "Blacklist.txt")) as black:
+    with open(blacklist_file, "r") as black:
         black_list = black.readlines()
         random.shuffle(black_list)
 
@@ -484,7 +484,7 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
             print(f"[+] Processed black {idx} lines")
     print("blacklist done")
 
-    with open(os.path.join("PhishingLink", "Whitelist.txt")) as white:
+    with open(whitelist_file, "r") as white:
         white_list = white.readlines()
         random.shuffle(white_list)
 
