@@ -16,6 +16,18 @@ from urllib.parse import urljoin
 load_dotenv()
 
 # api_key = os.getenv("OR_api_key")
+# Set up logging to both console and a file
+log_dir = os.path.join("PhishingLink")
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "process.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
 
 def get_working_url(domain):
         protocols = ["https://", "http://"]
@@ -481,7 +493,7 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         result = {"isPhishing": True}
         totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
         if idx % 5 == 0:
-            print(f"[+] Processed black {idx} lines")
+            logging.info(f"[+] Processed blacklist URL {idx}")
     print("blacklist done")
 
     with open(whitelist_file, "r") as white:
