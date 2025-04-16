@@ -30,22 +30,22 @@ logging.basicConfig(
 )
 
 def get_working_url(domain):
-            protocols = ["https://", "http://"]
-            headers = {"User-Agent": "Mozilla/5.0"}
+    protocols = ["https://", "http://"]
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-            for proto in protocols:
-                url = proto + domain
-                try:
-                    response = requests.head(
-                        url, timeout=5, allow_redirects=True, headers=headers
-                    )
-                    if response.status_code < 400:
-                        return url
-                except (
-                    requests.exceptions.SSLError,
-                    requests.exceptions.ConnectionError,
-                ):
-                    continue
+    for proto in protocols:
+        url = proto + domain
+        try:
+            response = requests.head(
+                url, timeout=5, allow_redirects=True, headers=headers
+            )
+            if response.status_code < 400:
+                return url
+        except (
+            requests.exceptions.SSLError,
+            requests.exceptions.ConnectionError,
+        ):
+            continue
             return None
 
 def check_redirects(url):
@@ -196,7 +196,7 @@ def extract_full_feature_set(url):
     parsed = tldextract.extract(url)
     domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
     url = get_working_url(domain_only)
-    
+
     try:
         response = requests.get(url, timeout=10)
         html = response.text
@@ -310,7 +310,9 @@ def extract_full_feature_set(url):
         }
 
 def extract_external_features(url, openpagerank_api_key=api_key):
-    url = get_working_url(url)
+    parsed = tldextract.extract(url)
+    domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
+    url = get_working_url(domain_only)
     features = {}
     try:
         hostname = urlparse(url).hostname
@@ -373,7 +375,7 @@ def extract_external_features(url, openpagerank_api_key=api_key):
 
     except Exception as e:
         logging.error(f"Error processing external features for {url}: {e}")
-        features["error"] = str(e)
+        features["error"] = True
 
     return features
 
