@@ -367,7 +367,7 @@ def process_files(whitelist_file: str, blacklist_file: str) -> str:
 
     random.shuffle(white_list)
 
-    for idx, i in enumerate(white_list[:2000]):
+    for idx, i in enumerate(white_list[:100]):
         url = i.strip()
         try:
             urlfeat = extract_url_features(url)
@@ -390,7 +390,7 @@ def process_files(whitelist_file: str, blacklist_file: str) -> str:
         logging.error(f"Failed to open {blacklist_file}: {e}")
         black_list = []
 
-    for idx, i in enumerate(black_list[:2000]):
+    for idx, i in enumerate(black_list[:100]):
         url = i.strip()
         try:
             urlfeat = extract_url_features(url)
