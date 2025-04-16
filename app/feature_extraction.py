@@ -29,13 +29,31 @@ logging.basicConfig(
     ]
 )
 
-def normalize_url(url):
-    """Ensure URL has a proper protocol."""
-    return url if url.startswith("http://") or url.startswith("https://") else "https://" + url
+def get_working_url(domain):
+            protocols = ["https://", "http://"]
+            headers = {"User-Agent": "Mozilla/5.0"}
+
+            for proto in protocols:
+                url = proto + domain
+                try:
+                    response = requests.head(
+                        url, timeout=5, allow_redirects=True, headers=headers
+                    )
+                    if response.status_code < 400:
+                        return url
+                except (
+                    requests.exceptions.SSLError,
+                    requests.exceptions.ConnectionError,
+                ):
+                    continue
+            return None
 
 def check_redirects(url):
     try:
-        url = normalize_url(url)
+        parsed = tldextract.extract(url)
+        domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
+        url = get_working_url(domain_only)
+        
         original_domain = tldextract.extract(url).registered_domain
         response = requests.get(url, timeout=10, allow_redirects=True)
         final_url = response.url
@@ -56,7 +74,9 @@ def check_redirects(url):
         }
 
 def extract_url_features(url):
-    url = normalize_url(url)
+    parsed = tldextract.extract(url)
+    domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
+    url = get_working_url(domain_only)
     features = {}
     parsed = urlparse(url)
     ext = tldextract.extract(url)
@@ -173,7 +193,10 @@ def extract_url_features(url):
     return features
 
 def extract_full_feature_set(url):
-    url = normalize_url(url)
+    parsed = tldextract.extract(url)
+    domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
+    url = get_working_url(domain_only)
+    
     try:
         response = requests.get(url, timeout=10)
         html = response.text
@@ -287,7 +310,7 @@ def extract_full_feature_set(url):
         }
 
 def extract_external_features(url, openpagerank_api_key=api_key):
-    url = normalize_url(url)
+    url = get_working_url(url)
     features = {}
     try:
         hostname = urlparse(url).hostname
