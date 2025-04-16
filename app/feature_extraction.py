@@ -354,7 +354,7 @@ def extract_external_features(url, openpagerank_api_key=api_key):
 
     return features
 
-def process_files(whitelist_file: str, blacklist_file: str) -> str:
+def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str:
     totalfeat = []
 
     # Process Whitelist URLs
@@ -405,10 +405,10 @@ def process_files(whitelist_file: str, blacklist_file: str) -> str:
             logging.error(f"Error processing blacklist URL {url}: {e}")
     logging.info("Finished processing blacklist.")
 
-    # Write results to CSV
+    # Write results to CSV with task_id as filename
     output_dir = os.path.join("PhishingLink")
     os.makedirs(output_dir, exist_ok=True)
-    csv_path = os.path.join(output_dir, "FeaturesColumn.csv")
+    csv_path = os.path.join(output_dir, f"Features_{task_id}.csv")  # Use task_id in filename
     if totalfeat:
         try:
             fieldnames = list(totalfeat[0].keys())
@@ -421,4 +421,5 @@ def process_files(whitelist_file: str, blacklist_file: str) -> str:
             logging.error(f"Error writing CSV: {e}")
     else:
         logging.error("No features were extracted; CSV not written.")
-    return csv_path
+    
+    return csv_path  # Return the file path

@@ -29,14 +29,22 @@ async def process_files(whitelist: UploadFile = File(...), blacklist: UploadFile
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
-
+    csv_filename = f"PhishingLink/Features_{task_id}.csv"
+    
+    # Check if the CSV file exists
+    if os.path.exists(csv_filename):
+        return {"task_id": task_id, "status": "SUCCESS", "csv_path": csv_filename}
+    
+    # If the CSV file doesn't exist, check the Celery task state
     task_result = process_urls_task.AsyncResult(task_id)
+    
     if task_result.state == "PENDING":
         return {"task_id": task_id, "status": "PENDING"}
     elif task_result.state != "FAILURE":
         return {"task_id": task_id, "status": task_result.state, "result": task_result.result}
     else:
         return {"task_id": task_id, "status": "FAILURE", "error": str(task_result.info)}
+
 
 @app.get("/download/{filename}")
 async def download_file(filename: str):
