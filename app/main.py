@@ -9,7 +9,7 @@ from app.tasks import process_urls_task
 app = FastAPI()
 
 UPLOAD_DIR = "uploads"
-DOWNLOAD_DIR = os.path.join(os.getcwd(), "PhishingLink")
+DOWNLOAD_DIR = os.getcwd()
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post("/process")
