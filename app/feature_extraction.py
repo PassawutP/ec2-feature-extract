@@ -329,10 +329,11 @@ def extract_full_feature_set(url):
         }
 
         login_forms = int(any(
-            f.get("action", "").strip().lower() in suspicious_actions or
-            any(k in f.get("action", "").lower() for k in ["login", "signin", "verify"])
+            (f.get("action") or "").strip().lower() in suspicious_actions or
+            any(k in (f.get("action") or "").lower() for k in ["login", "signin", "verify"])
             for f in soup.find_all("form")
         ))
+
         empty_forms = int(any(
             f.get("action", "").strip().lower() in ["", "about:blank"]
             for f in soup.find_all("form")
@@ -483,7 +484,7 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         black_list = black.readlines()
         random.shuffle(black_list)
 
-    for idx, i in enumerate(black_list[:1000]):
+    for idx, i in enumerate(black_list[:500]):
         urlfeat = extract_url_features(i.strip())
         Htmlfeat = extract_full_feature_set(i.strip())
         Exfeat = extract_external_features(i.strip())
@@ -500,7 +501,7 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         white_list = white.readlines()
         random.shuffle(white_list)
 
-    for idx, i in enumerate(white_list[:1000]):
+    for idx, i in enumerate(white_list[:500]):
         parsed = tldextract.extract(i)
         domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
         url = get_working_url(domain_only)
