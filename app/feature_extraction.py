@@ -505,6 +505,9 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         parsed = tldextract.extract(i)
         domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
         url = get_working_url(domain_only)
+        if url is None:
+            print(f"skipping {domain_only} — no working URL found")
+            continue
         urlfeat = extract_url_features(url.strip())
         Htmlfeat = extract_full_feature_set(url.strip())
         Exfeat = extract_external_features(url.strip())
