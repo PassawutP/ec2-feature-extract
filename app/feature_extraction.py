@@ -237,7 +237,7 @@ def extract_url_features(url):
     features["f55_suspicious_tld"] = int(tld in suspicious_tlds)
 
     # f56: Statistical report (placeholder)
-    with open("PhishingLink\\knownip.txt", "r") as f:
+    with open("PhishingLink/knownip.txt", "r") as f:
         known_malicious_ips = [line.strip() for line in f if line.strip()]
     features["f56_known_malicious_ip"] = int(hostname in known_malicious_ips)
 
