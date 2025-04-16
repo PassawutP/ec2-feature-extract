@@ -484,7 +484,7 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         black_list = black.readlines()
         random.shuffle(black_list)
 
-    for idx, i in enumerate(black_list[:500]):
+    for idx, i in enumerate(black_list[:1000]):
         urlfeat = extract_url_features(i.strip())
         Htmlfeat = extract_full_feature_set(i.strip())
         Exfeat = extract_external_features(i.strip())
@@ -501,23 +501,43 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
         white_list = white.readlines()
         random.shuffle(white_list)
 
-    for idx, i in enumerate(white_list[:500]):
-        parsed = tldextract.extract(i)
-        domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
-        url = get_working_url(domain_only)
-        if url is None:
-            print(f"skipping {domain_only} — no working URL found")
+    for idx, i in enumerate(white_list[:1000]):
+        try:
+            parsed = tldextract.extract(i)
+            domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
+            
+            try:
+                url = get_working_url(domain_only)
+            except Exception as e:
+                print(f"Error getting working URL for {domain_only}: {e}")
+                continue
+
+            if url is None:
+                print(f"skipping {domain_only} — no working URL found")
+                continue
+
+            try:
+                urlfeat = extract_url_features(url.strip())
+                Htmlfeat = extract_full_feature_set(url.strip())
+                Exfeat = extract_external_features(url.strip())
+            except Exception as e:
+                print(f"Error extracting features from {url}: {e}")
+                continue
+
+            if None in [urlfeat, Htmlfeat, Exfeat]:
+                print(f"skipping {url} — some feature extraction returned None")
+                continue
+
+            result = {"isPhishing": False}
+            totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
+            
+            if idx % 5 == 0:
+                print(f"[+] Processed white {idx} lines")
+
+        except Exception as e:
+            print(f"Unexpected error on whitelist entry {i}: {e}")
             continue
-        urlfeat = extract_url_features(url.strip())
-        Htmlfeat = extract_full_feature_set(url.strip())
-        Exfeat = extract_external_features(url.strip())
-        if None in [urlfeat, Htmlfeat, Exfeat]:
-            print(f"skipping {url}")
-            continue
-        result = {"isPhishing": False}
-        totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
-        if idx % 5 == 0:
-            print(f"[+] Processed white {idx} lines")
+
 
     # Write results to CSV with task_id as filename
     output_dir = os.path.join("PhishingLink")
