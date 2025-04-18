@@ -1,5 +1,6 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+from requests.exceptions import SSLError, ConnectionError, ReadTimeout
 import tldextract
 import socket
 import requests
@@ -10,40 +11,26 @@ import os
 import random
 from dotenv import load_dotenv
 import csv
-import logging
-from urllib.parse import urljoin
 
 load_dotenv()
 
 # api_key = os.getenv("OR_api_key")
-# Set up logging to both console and a file
-log_dir = os.path.join("PhishingLink")
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, "process.log")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
-)
 
 def get_working_url(domain):
-        protocols = ["https://", "http://"]
-        headers = {"User-Agent": "Mozilla/5.0"}
+    protocols = ["https://", "http://"]
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-        for proto in protocols:
-            url = proto + domain
-            try:
-                response = requests.head(
-                    url, timeout=5, allow_redirects=True, headers=headers
-                )
-                if response.status_code < 400:
-                    return url
-            except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
-                continue
-        return None
+    for proto in protocols:
+        url = proto + domain
+        try:
+            response = requests.head(
+                url, timeout=5, allow_redirects=True, headers=headers
+            )
+            if response.status_code < 400:
+                return url
+        except (SSLError, ConnectionError, ReadTimeout, requests.exceptions.RequestException):
+            continue  # Try the next protocol
+    return None
 
 
 def check_redirects(url):
@@ -249,7 +236,7 @@ def extract_url_features(url):
     features["f55_suspicious_tld"] = int(tld in suspicious_tlds)
 
     # f56: Statistical report (placeholder)
-    with open("PhishingLink/knownip.txt", "r") as f:
+    with open("PhishingLink\\knownip.txt", "r") as f:
         known_malicious_ips = [line.strip() for line in f if line.strip()]
     features["f56_known_malicious_ip"] = int(hostname in known_malicious_ips)
 
@@ -276,7 +263,9 @@ def extract_full_feature_set(url):
                         internal_errors += 1
                     else:
                         external_errors += 1
-        return internal_errors/(internal_errors+external_errors), external_errors/(internal_errors+external_errors)
+        if (internal_errors+external_errors)!=0:
+            return internal_errors/(internal_errors+external_errors), external_errors/(internal_errors+external_errors)
+        else:return 0,0
 
     try:
         if url is None:
@@ -329,11 +318,10 @@ def extract_full_feature_set(url):
         }
 
         login_forms = int(any(
-            (f.get("action") or "").strip().lower() in suspicious_actions or
-            any(k in (f.get("action") or "").lower() for k in ["login", "signin", "verify"])
+            f.get("action", "").strip().lower() in suspicious_actions or
+            any(k in f.get("action", "").lower() for k in ["login", "signin", "verify"])
             for f in soup.find_all("form")
         ))
-
         empty_forms = int(any(
             f.get("action", "").strip().lower() in ["", "about:blank"]
             for f in soup.find_all("form")
@@ -480,11 +468,11 @@ def extract_external_features(url):#, openpagerank_api_key=api_key):
 def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str:
     totalfeat = []
 
-    with open(blacklist_file, "r") as black:
+    with open(os.path.join("PhishingLink", "Blacklist.txt")) as black:
         black_list = black.readlines()
         random.shuffle(black_list)
-
-    for idx, i in enumerate(black_list[:1000]):
+    count_black = 0
+    for idx, i in enumerate(black_list):
         urlfeat = extract_url_features(i.strip())
         Htmlfeat = extract_full_feature_set(i.strip())
         Exfeat = extract_external_features(i.strip())
@@ -493,67 +481,50 @@ def process_files(whitelist_file: str, blacklist_file: str, task_id: str) -> str
             continue
         result = {"isPhishing": True}
         totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
-        if idx % 5 == 0:
-            logging.info(f"[+] Processed blacklist URL {idx}")
+        count_black += 1
+        if count_black % 5 == 0:
+            print(f"[+] Processed black {count_black} lines")
+        if count_black == 1000:
+            print('Feature Extraction is done');break
     print("blacklist done")
 
-    with open(whitelist_file, "r") as white:
+    with open(os.path.join("PhishingLink", "Whitelist.txt")) as white:
         white_list = white.readlines()
         random.shuffle(white_list)
-
-    for idx, i in enumerate(white_list[:1000]):
-        try:
-            parsed = tldextract.extract(i)
-            domain_only = ".".join(part for part in [parsed.domain, parsed.suffix] if part)
-            
-            try:
-                url = get_working_url(domain_only)
-            except Exception as e:
-                print(f"Error getting working URL for {domain_only}: {e}")
-                continue
-
-            if url is None:
-                print(f"skipping {domain_only} — no working URL found")
-                continue
-
-            try:
-                urlfeat = extract_url_features(url.strip())
-                Htmlfeat = extract_full_feature_set(url.strip())
-                Exfeat = extract_external_features(url.strip())
-            except Exception as e:
-                print(f"Error extracting features from {url}: {e}")
-                continue
-
-            if None in [urlfeat, Htmlfeat, Exfeat]:
-                print(f"skipping {url} — some feature extraction returned None")
-                continue
-
-            result = {"isPhishing": False}
-            totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
-            
-            if idx % 5 == 0:
-                print(f"[+] Processed white {idx} lines")
-
-        except Exception as e:
-            print(f"Unexpected error on whitelist entry {i}: {e}")
+    count=0
+    for idx, i in enumerate(white_list):
+        parsed = tldextract.extract(i)
+        domain_only = ".".join(part for part in [parsed.subdomain ,parsed.domain, parsed.suffix] if part)
+        url = get_working_url(domain_only)
+        if url is None:
+            print(f"skipping {i}")
             continue
+        urlfeat = extract_url_features(url.strip())
+        Htmlfeat = extract_full_feature_set(url.strip())
+        Exfeat = extract_external_features(url.strip())
+        if None in [urlfeat, Htmlfeat, Exfeat]:
+            print(f"skipping {url}")
+            continue
+        result = {"isPhishing": False}
+        totalfeat += [{**urlfeat, **Htmlfeat, **Exfeat, **result}]
+        count+=1
+        if count % 5 == 0:
+            print(f"[+] Processed white {count} lines")
+        if count == 1000:
+            print('Feature Extraction is done')
+            break
 
-
-    # Write results to CSV with task_id as filename
-    output_dir = os.path.join("PhishingLink")
-    os.makedirs(output_dir, exist_ok=True)
-    csv_path = os.path.join(output_dir, f"Features_{task_id}.csv")  # Use task_id in filename
     if totalfeat:
-        try:
-            fieldnames = list(totalfeat[0].keys())
-            with open(csv_path, mode="w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(totalfeat)
-            logging.info(f"CSV successfully written to {csv_path}")
-        except Exception as e:
-            logging.error(f"Error writing CSV: {e}")
+        with open(
+            os.path.join("PhishingLink", "FeaturesColumn.csv"),
+            mode="w",
+            newline="",
+            encoding="utf-8",
+        ) as f:
+            writer = csv.DictWriter(f, fieldnames=totalfeat[0].keys())
+            writer.writeheader()
+            writer.writerows(totalfeat)
+            print("code works")
     else:
-        logging.error("No features were extracted; CSV not written.")
-        
-    return csv_path  # Return the file path
+        print("code does NOT work")
+
